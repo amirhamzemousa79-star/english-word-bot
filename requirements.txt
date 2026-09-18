@@ -1,0 +1,4 @@
+python-telegram-bot
+python-dotenv
+google-genai
+httpx<0.28.0
