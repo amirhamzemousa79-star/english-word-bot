@@ -105,7 +105,7 @@ async def check_access(update: Update) -> bool:
     user = update.effective_user
 
     if not user:
-        return False
+        return True
 
     if is_authorized(user.id):
         return True
