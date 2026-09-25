@@ -102,26 +102,26 @@ def is_authorized(user_id: int) -> bool:
 
 async def check_access(update: Update) -> bool:
 
-    user = update.effective_user
+    # user = update.effective_user
 
-    if not user:
-        return False
+    # if not user:
+    # return False
 
-    if is_authorized(user.id):
-        return False
+    # if is_authorized(user.id):
+    # return False
 
-    message = "دست نزن جیزه، دسترسی نداری 😈"
+    # message = "دست نزن جیزه، دسترسی نداری 😈"
 
-    if update.callback_query:
-        await update.callback_query.answer(
-            message,
-            show_alert=True
-        )
+    # if update.callback_query:
+    # await update.callback_query.answer(
+    #    message,
+    #    show_alert=True
+    # )
 
-    elif update.message:
-        await update.message.reply_text(message)
+    # elif update.message:
+    # await update.message.reply_text(message)
 
-    return False
+    return True
 
 
 # =========================================================
