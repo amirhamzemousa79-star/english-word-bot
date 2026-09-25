@@ -105,10 +105,10 @@ async def check_access(update: Update) -> bool:
     user = update.effective_user
 
     if not user:
-        return True
+        return False
 
     if is_authorized(user.id):
-        return True
+        return False
 
     message = "دست نزن جیزه، دسترسی نداری 😈"
 
