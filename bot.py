@@ -755,8 +755,12 @@ async def start_command(
 
         "📌 دستورات:\n\n"
 
-        "➕ اضافه کردن لغت:\n"
-        "/add apple سیب\n\n"
+        "➕ اضافه کردن یک لغت:\n"
+        "/add apple | سیب\n\n"
+        "➕ اضافه کردن چند لغت (هر خط یک لغت):\n"
+        "/add\n"
+        "sore throat | گلودرد\n"
+        "run out of | تمام شدن\n\n"
 
         "🗑 حذف لغت:\n"
         "/remove apple\n\n"
@@ -788,48 +792,106 @@ async def add_command(
     if not await check_access(update):
         return
 
-    if len(context.args) < 2:
+    message_text = update.message.text or ""
 
-        await update.message.reply_text(
-            "فرمت صحیح:\n\n"
-            "/add apple سیب"
-        )
-
-        return
-
-    word = context.args[0].lower().strip()
-
-    meaning = " ".join(
-        context.args[1:]
+    # متن بعد از دستور /add را می‌گیریم؛ این روش چندخطی را هم پشتیبانی می‌کند.
+    import re
+    payload = re.sub(
+        r"^/add(?:@\w+)?",
+        "",
+        message_text,
+        count=1
     ).strip()
 
-    words = load_words()
-
-    # اگر قبلاً وجود داشته
-    if word in words:
-
+    if not payload:
         await update.message.reply_text(
-            f"⚠️ لغت {word} قبلاً وجود دارد."
+            "فرمت اضافه کردن لغت:\n\n"
+            "یک لغت:\n"
+            "/add sore throat | گلودرد\n\n"
+            "چند لغت با هم (هر خط یک لغت):\n"
+            "/add\n"
+            "sore throat | گلودرد\n"
+            "run out of | تمام شدن\n"
+            "take care | مراقبت کردن\n\n"
+            "علامت | را بین کلمه انگلیسی و معنی فارسی قرار بده."
         )
-
         return
 
-    # لغت جدید
-    words[word] = {
-        "meaning": meaning,
-        "status": "active",
-        "review_count": 0,
-    }
+    words = load_words()
+    added = []
+    duplicates = []
+    invalid_lines = []
 
-    save_words(words)
+    lines = [line.strip() for line in payload.splitlines() if line.strip()]
 
-    await update.message.reply_text(
-        (
-            f"✅ لغت {word} اضافه شد.\n\n"
-            "📌 تعداد مرور: ۰ از ۳\n"
-            "📍 در انتهای صف قرار گرفت."
+    for line_number, line in enumerate(lines, start=1):
+        if "|" in line:
+            word_part, _, meaning_part = line.partition("|")
+            word = word_part.strip().lower()
+            meaning = meaning_part.strip()
+
+            if not word or not meaning:
+                invalid_lines.append(
+                    f"خط {line_number}: «{line}» — کلمه یا معنی خالی است."
+                )
+                continue
+        elif len(lines) == 1:
+            # سازگاری با دستور قدیمی مثل /add apple سیب.
+            # برای کلمات چندبخشی حتماً از | استفاده شود.
+            parts = line.split(maxsplit=1)
+            if len(parts) < 2:
+                invalid_lines.append(
+                    f"خط {line_number}: «{line}» — معنی فارسی وارد نشده است."
+                )
+                continue
+            word = parts[0].strip().lower()
+            meaning = parts[1].strip()
+        else:
+            invalid_lines.append(
+                f"خط {line_number}: «{line}» — جداکننده | وجود ندارد."
+            )
+            continue
+
+        if word in words:
+            duplicates.append(word)
+            continue
+
+        words[word] = {
+            "meaning": meaning,
+            "status": "active",
+            "review_count": 0,
+        }
+        added.append((word, meaning))
+
+    if added:
+        save_words(words)
+
+    result_lines = []
+
+    if added:
+        result_lines.append(f"✅ تعداد {len(added)} لغت اضافه شد:")
+        result_lines.extend(
+            f"• {word} — {meaning}" for word, meaning in added
         )
-    )
+        result_lines.append("📍 همه در انتهای صف قرار گرفتند.")
+
+    if duplicates:
+        result_lines.append(
+            "\n⚠️ این لغت‌ها از قبل وجود داشتند و اضافه نشدند: "
+            + ", ".join(duplicates)
+        )
+
+    if invalid_lines:
+        result_lines.append("\n❌ این خط‌ها قابل پردازش نبودند:")
+        result_lines.extend(invalid_lines)
+        result_lines.append(
+            "فرمت هر خط باید این‌طور باشد: sore throat | گلودرد"
+        )
+
+    if not result_lines:
+        result_lines.append("هیچ لغتی برای اضافه کردن پیدا نشد.")
+
+    await update.message.reply_text("\n".join(result_lines))
 
 
 # =========================================================
